@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/gookit/color"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -124,6 +126,11 @@ func main() {
 			Usage:   "bypasses the pre-commit and commit-msg hooks",
 			EnvVars: []string{"PLUGIN_NO_VERIFY", "GIT_PUSH_NO_VERIFY"},
 		},
+		&cli.StringSliceFlag{
+			Name:    "copy-src",
+			Usage:   "copy from the src list to .",
+			EnvVars: []string{"COPY_SRC"},
+		},
 	}
 
 	if BuildNum != "" {
@@ -162,8 +169,14 @@ func run(c *cli.Context) error {
 			CommitMessage: c.String("commit-message"),
 			EmptyCommit:   c.Bool("empty-commit"),
 			NoVerify:      c.Bool("no-verify"),
+			CopySrcLst:    c.StringSlice("copy-src"),
 		},
 	}
 
+	defaultSrc, _ := os.Getwd()
+	plugin.Config.DefaultSrc = defaultSrc
+
+	fmt.Println("666---", plugin.Config.CopySrcLst)
+	color.Green.Println(plugin.Config.DefaultSrc)
 	return plugin.Exec()
 }

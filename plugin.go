@@ -2,8 +2,12 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/appleboy/drone-git-push/repo"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/gookit/color"
 )
 
 type (
@@ -40,6 +44,8 @@ type (
 		CommitMessage string
 		EmptyCommit   bool
 		NoVerify      bool
+		CopySrcLst    []string
+		DefaultSrc    string
 	}
 
 	// Plugin Structure
@@ -55,34 +61,54 @@ func (p Plugin) Exec() error {
 	if err := p.HandlePath(); err != nil {
 		return err
 	}
+	color.Yellow.Println("HandlePath")
 
 	if err := p.WriteConfig(); err != nil {
 		return err
 	}
+	color.Yellow.Println("WriteConfig")
 
 	if err := p.WriteKey(); err != nil {
 		return err
 	}
 
+	color.Yellow.Println("WriteKey")
+
 	if err := p.WriteNetrc(); err != nil {
 		return err
 	}
 
+	color.Yellow.Println("WriteNetrc")
+
 	if err := p.WriteToken(); err != nil {
+		return err
+	}
+	color.Yellow.Println("WriteToken")
+
+	if err := p.Clone(); err != nil {
+		return err
+	}
+
+	if err := p.CopyFile(); err != nil {
 		return err
 	}
 
 	if err := p.HandleCommit(); err != nil {
 		return err
 	}
+	color.Yellow.Println("HandleCommit")
 
 	if err := p.HandleRemote(); err != nil {
 		return err
 	}
 
+	color.Yellow.Println("HandleRemote")
+
 	if err := p.HandlePush(); err != nil {
 		return err
 	}
+
+	color.Yellow.Println("HandlePush")
 
 	return p.HandleCleanup()
 }
@@ -137,6 +163,7 @@ func (p Plugin) WriteToken() error {
 
 // HandleRemote adds the git remote if required.
 func (p Plugin) HandleRemote() error {
+	color.Red.Println(spew.Sdump(p.Config))
 	if p.Config.Remote != "" {
 		if err := execute(repo.RemoteAdd(p.Config.RemoteName, p.Config.Remote)); err != nil {
 			return err
@@ -148,9 +175,53 @@ func (p Plugin) HandleRemote() error {
 
 // HandlePath changes to a different directory if required
 func (p Plugin) HandlePath() error {
-	if p.Config.Path != "" {
-		if err := os.Chdir(p.Config.Path); err != nil {
-			return err
+
+	if p.Config.Path == "" {
+		return nil
+	}
+
+	color.Red.Println(os.Getwd())
+
+	splitedRemote := strings.Split(p.Config.Remote, "/")
+	dirName := ""
+	if len(splitedRemote) > 0 {
+		dirName = splitedRemote[len(splitedRemote)-1]
+	}
+	dirName = strings.ReplaceAll(dirName, ".git", "")
+	dirName = filepath.Join(p.Config.Path, dirName)
+	color.Yellow.Println(dirName)
+
+	// path is not exist
+	if _, err := os.Stat(dirName); err == nil {
+		os.RemoveAll(dirName)
+	}
+
+	// if _, err := os.Stat(p.Config.Path); os.IsNotExist(err) {
+	// 	_ = os.MkdirAll(dirName, os.ModePerm)
+
+	// }
+	_ = os.MkdirAll(dirName, os.ModePerm)
+
+	if err := os.Chdir(dirName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p Plugin) CopyFile() error {
+
+	for _, filename := range p.Config.CopySrcLst {
+		filename := strings.TrimSpace(filename)
+		if strings.HasPrefix(filename, "/") {
+			continue
+		}
+
+		fromPath := filepath.Join(p.Config.DefaultSrc, filename)
+
+		// color.Green.Println(fromPath, p.Config.DefaultSrc)
+		if err := execute(repo.CopyFile(fromPath)); err != nil {
+			continue
 		}
 	}
 
@@ -199,6 +270,16 @@ func (p Plugin) HandlePush() error {
 func (p Plugin) HandleCleanup() error {
 	if p.Config.Remote != "" {
 		if err := execute(repo.RemoteRemove(p.Config.RemoteName)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p Plugin) Clone() error {
+	if p.Config.Remote != "" {
+		if err := execute(repo.RemoteCloneNamedBranch(p.Config.Remote, p.Config.Branch)); err != nil {
 			return err
 		}
 	}

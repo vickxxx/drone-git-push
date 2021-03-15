@@ -54,3 +54,17 @@ func RemotePushNamedBranch(remote, localbranch string, branch string, force bool
 
 	return cmd
 }
+
+func RemoteCloneNamedBranch(remote, branch string) *exec.Cmd {
+	cmd := exec.Command(
+		"git",
+		"clone",
+		"-b",
+		branch,
+		"--depth=1",
+		remote,
+		".",
+	)
+
+	return cmd
+}
