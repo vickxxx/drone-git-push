@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -80,6 +82,27 @@ func (p Plugin) Exec() error {
 
 	color.Yellow.Println("WriteNetrc")
 
+	if os.Getenv("PLUGIN_SHOW_ENV") != "" {
+		cmd := exec.Command("ls", "-a")
+
+		output, err := cmd.Output()
+		if err != nil {
+			fmt.Printf("Execute Shell:%s failed with error:%s", cmd, err.Error())
+			return nil
+		}
+		fmt.Printf("Execute Shell:%s finished with output:\n%s", cmd, string(output))
+
+		cmd2 := exec.Command("env")
+
+		output2, err := cmd2.Output()
+		if err != nil {
+			fmt.Printf("Execute Shell:%s failed with error:%s", cmd2, err.Error())
+			return nil
+		}
+		fmt.Printf("Execute Shell:%s finished with output:\n%s", cmd2, string(output2))
+		fmt.Println(spew.Sdump(p))
+	}
+
 	if err := p.WriteToken(); err != nil {
 		return err
 	}
@@ -88,6 +111,8 @@ func (p Plugin) Exec() error {
 	if err := p.Clone(); err != nil {
 		return err
 	}
+
+	color.Yellow.Println("Clone")
 
 	if err := p.CopyFile(); err != nil {
 		return err
@@ -115,7 +140,7 @@ func (p Plugin) Exec() error {
 
 // WriteConfig writes all required configurations.
 func (p Plugin) WriteConfig() error {
-	if err := repo.GlobalName(p.Commit.Author.Name).Run(); err != nil {
+	if err := repo.GlobalName(p.Netrc.Login).Run(); err != nil {
 		return err
 	}
 
@@ -163,7 +188,7 @@ func (p Plugin) WriteToken() error {
 
 // HandleRemote adds the git remote if required.
 func (p Plugin) HandleRemote() error {
-	color.Red.Println(spew.Sdump(p.Config))
+	// color.Red.Println(spew.Sdump(p))
 	if p.Config.Remote != "" {
 		if err := execute(repo.RemoteAdd(p.Config.RemoteName, p.Config.Remote)); err != nil {
 			return err
@@ -235,15 +260,17 @@ func (p Plugin) HandleCommit() error {
 			return err
 		}
 
+		cmtMsg := fmt.Sprintf("%s-%s", os.Getenv("DRONE_COMMIT_SHA")[:10], p.Config.CommitMessage)
+
 		if err := execute(repo.TestCleanTree()); err != nil {
 			// changes to commit
-			if err := execute(repo.ForceCommit(p.Config.CommitMessage, p.Config.NoVerify)); err != nil {
+			if err := execute(repo.ForceCommit(cmtMsg, p.Config.NoVerify)); err != nil {
 				return err
 			}
 		} else { // no changes
 			if p.Config.EmptyCommit {
 				// no changes but commit anyway
-				if err := execute(repo.EmptyCommit(p.Config.CommitMessage, p.Config.NoVerify)); err != nil {
+				if err := execute(repo.EmptyCommit(cmtMsg, p.Config.NoVerify)); err != nil {
 					return err
 				}
 			}

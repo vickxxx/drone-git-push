@@ -46,17 +46,17 @@ func main() {
 		&cli.StringFlag{
 			Name:    "netrc.machine",
 			Usage:   "netrc machine",
-			EnvVars: []string{"DRONE_NETRC_MACHINE"},
+			EnvVars: []string{"PLUGIN_TARGER_MACHINE"},
 		},
 		&cli.StringFlag{
 			Name:    "netrc.username",
 			Usage:   "netrc username",
-			EnvVars: []string{"DRONE_NETRC_USERNAME"},
+			EnvVars: []string{"PLUGIN_USER"},
 		},
 		&cli.StringFlag{
 			Name:    "netrc.password",
 			Usage:   "netrc password",
-			EnvVars: []string{"DRONE_NETRC_PASSWORD"},
+			EnvVars: []string{"PLUGIN_PASSWD"},
 		},
 		&cli.StringFlag{
 			Name:    "ssh-key",
@@ -129,7 +129,7 @@ func main() {
 		&cli.StringSliceFlag{
 			Name:    "copy-src",
 			Usage:   "copy from the src list to .",
-			EnvVars: []string{"COPY_SRC"},
+			EnvVars: []string{"PLUGIN_COPY_SRC"},
 		},
 	}
 
