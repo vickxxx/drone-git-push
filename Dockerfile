@@ -13,5 +13,7 @@ RUN sed -i "s@https://dl-cdn.alpinelinux.org/@https://mirrors.aliyun.com/@g" /et
 
 
 COPY ./drone-git-push /bin/
+COPY ./clear.sh /bin/
+ENV FILTER_BRANCH_SQUELCH_WARNING=1
 
 ENTRYPOINT ["/bin/drone-git-push"]

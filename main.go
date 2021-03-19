@@ -131,6 +131,16 @@ func main() {
 			Usage:   "copy from the src list to .",
 			EnvVars: []string{"PLUGIN_COPY_SRC"},
 		},
+		&cli.StringFlag{
+			Name:    "tag-name",
+			Usage:   "git tag and push",
+			EnvVars: []string{"PLUGIN_TAG_NAME"},
+		},
+		&cli.StringFlag{
+			Name:    "clear-file",
+			Usage:   "clear file in git",
+			EnvVars: []string{"PLUGIN_CLEAR_FILE"},
+		},
 	}
 
 	if BuildNum != "" {
@@ -170,6 +180,8 @@ func run(c *cli.Context) error {
 			EmptyCommit:   c.Bool("empty-commit"),
 			NoVerify:      c.Bool("no-verify"),
 			CopySrcLst:    c.StringSlice("copy-src"),
+			TagName:       c.String("tag-name"),
+			ClearFile:     c.String("clear-file"),
 		},
 	}
 

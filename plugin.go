@@ -48,6 +48,8 @@ type (
 		NoVerify      bool
 		CopySrcLst    []string
 		DefaultSrc    string
+		TagName       string
+		ClearFile     string
 	}
 
 	// Plugin Structure
@@ -111,8 +113,13 @@ func (p Plugin) Exec() error {
 	if err := p.Clone(); err != nil {
 		return err
 	}
-
 	color.Yellow.Println("Clone")
+
+	// clear file
+	if err := p.ClearFile(); err != nil {
+		return err
+	}
+	color.Yellow.Println("ClearFile")
 
 	if err := p.CopyFile(); err != nil {
 		return err
@@ -234,6 +241,24 @@ func (p Plugin) HandlePath() error {
 	return nil
 }
 
+// clear file in git commit
+func (p Plugin) ClearFile() error {
+
+	if p.Config.ClearFile == "" {
+		return nil
+	}
+
+	return execute(repo.ClearFile(p.Config.ClearFile))
+	// clear file
+	// if err := execute(repo.ClearFile(p.Config.ClearFile)); err != nil {
+	// 	fmt.Println(err)
+	// 	return err
+	// }
+
+	// // push -f
+	// return execute(repo.ForcePush(p.Config.RemoteName))
+}
+
 func (p Plugin) CopyFile() error {
 
 	for _, filename := range p.Config.CopySrcLst {
@@ -241,12 +266,21 @@ func (p Plugin) CopyFile() error {
 		if strings.HasPrefix(filename, "/") {
 			continue
 		}
+		if filename == "" {
+			continue
+		}
 
 		fromPath := filepath.Join(p.Config.DefaultSrc, filename)
 
+		if err := execute(repo.Rmfile(filename)); err != nil {
+			fmt.Printf("err: %v\n", err)
+			return err
+		}
+
 		// color.Green.Println(fromPath, p.Config.DefaultSrc)
 		if err := execute(repo.CopyFile(fromPath)); err != nil {
-			continue
+			fmt.Printf("err: %v\n", err)
+			return err
 		}
 	}
 
@@ -260,7 +294,11 @@ func (p Plugin) HandleCommit() error {
 			return err
 		}
 
-		cmtMsg := fmt.Sprintf("%s-%s", os.Getenv("DRONE_COMMIT_SHA")[:10], p.Config.CommitMessage)
+		cmtSHA := os.Getenv("DRONE_COMMIT_SHA")
+		if len(cmtSHA) > 10 {
+			cmtSHA = cmtSHA[:10]
+		}
+		cmtMsg := fmt.Sprintf("%s-%s", cmtSHA, p.Config.CommitMessage)
 
 		if err := execute(repo.TestCleanTree()); err != nil {
 			// changes to commit
@@ -290,7 +328,15 @@ func (p Plugin) HandlePush() error {
 		followtags = p.Config.FollowTags
 	)
 
-	return execute(repo.RemotePushNamedBranch(name, local, branch, force, followtags))
+	if p.Config.TagName == "" {
+		return execute(repo.RemotePushNamedBranch(name, local, branch, force, followtags))
+	}
+
+	if err := execute(repo.GitTag(p.Config.TagName)); err != nil {
+		return err
+	}
+
+	return execute(repo.TagPush(name))
 }
 
 // HandleCleanup does eventually do some cleanup.

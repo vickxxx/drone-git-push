@@ -61,10 +61,38 @@ func RemoteCloneNamedBranch(remote, branch string) *exec.Cmd {
 		"clone",
 		"-b",
 		branch,
-		"--depth=1",
+		// "--depth=1",
 		remote,
 		".",
 	)
 
+	return cmd
+}
+
+func GitTag(tagName string) *exec.Cmd {
+	cmd := exec.Command(
+		"git",
+		"tag",
+		tagName,
+	)
+	return cmd
+}
+
+func TagPush(remote string) *exec.Cmd {
+	cmd := exec.Command(
+		"git",
+		"push",
+		remote,
+		"--tags",
+	)
+	return cmd
+}
+
+func ForcePush(remote string) *exec.Cmd {
+	cmd := exec.Command(
+		"git",
+		"push",
+		"-f",
+	)
 	return cmd
 }
